@@ -10,13 +10,15 @@ export default new Router({
     {
       path: '/',
       name: 'Home',
+	  alias: '/bzz/:address/',
       component: Home
     },
     {
       path: '/auctions/:id',
       name: 'Auction',
+      alias: '/bzz/:address/auctions/:id',
       component: Auction
-    }
+    },
   ],
   mode: 'history',
   scrollBehavior (to, from, savedPosition) {
