@@ -259,7 +259,7 @@ contract AuctionRepository {
         if(myAuction.owner == msg.sender) revert();
 
         // if auction is expired
-        if( block.timestamp > myAuction.blockDeadline ) revert();
+        if( myAuction.blockDeadline > 0 && block.timestamp > myAuction.blockDeadline ) revert();
 
         uint bidsLength = auctionBids[_auctionId].length;
         uint256 tempAmount = myAuction.startPrice;
