@@ -12,7 +12,7 @@ export class DeedRepository {
     }
     setWeb3(web3) {
         this.web3 = web3
-        this.contractInstance = this.web3.eth.contract(Config.DEEDREPOSITORY_ABI).at(Config.DEEDREPOSITORY_ADDRESS)
+        this.contractInstance = new this.web3.eth.Contract(Config.DEEDREPOSITORY_ABI, Config.DEEDREPOSITORY_ADDRESS)
     }
     
     getWeb3() {
@@ -43,19 +43,17 @@ export class DeedRepository {
 
     async watchIfCreated(cb) {
         const currentBlock = await this.getCurrentBlock()
-        const eventWatcher = this.contractInstance.DeedRegistered({}, {fromBlock: currentBlock - 1, toBlock: 'latest'})
-        eventWatcher.watch(cb)
+        const eventWatcher = this.contractInstance.events.DeedRegistered({fromBlock: currentBlock - 1}, cb)
     }
 
     async watchIfDeedTransfered(cb) {
         const currentBlock = await this.getCurrentBlock()
-        const eventWatcher = this.contractInstance.Transfer({}, {fromBlock: currentBlock - 1, toBlock: 'latest'})
-        eventWatcher.watch(cb)
+        const eventWatcher = this.contractInstance.events.Transfer({}, {fromBlock: currentBlock - 1}, cb)
     }
 
     exists(deedId) {
         return new Promise(async (resolve, reject) => {
-            this.contractInstance.exists(deedId, {from: this.account, gas: this.gas }, (err, transaction) => {
+            this.contractInstance.methods.exists(deedId).call({from: this.account, gas: this.gas }, (err, transaction) => {
                 if(!err) resolve(transaction)
                 reject(err)
             })
@@ -64,7 +62,7 @@ export class DeedRepository {
 
     transferTo(to, deedId) {
         return new Promise(async (resolve, reject) => {
-            this.contractInstance.transferFrom(this.account, to, deedId, {from: this.account, gas: this.gas }, (err, transaction) => {
+            this.contractInstance.methods.transferFrom(this.account, to, deedId).send({from: this.account, gas: this.gas }, (err, transaction) => {
                 if(!err) resolve(transaction)
                 reject(err)
             })
@@ -73,9 +71,11 @@ export class DeedRepository {
     }
 
     create(deedId, deedURI) {
-        console.log('contractinsatnce', this.contractInstance )
+        console.log('contractinstance', this.contractInstance )
+        console.log('deedId', deedId)
+        console.log('deedURI', deedURI)
         return new Promise(async (resolve, reject) => {
-            this.contractInstance.registerDeed(deedId, deedURI, {from: this.account, gas: this.gas }, (err, transaction) => {
+            this.contractInstance.methods.registerDeed(deedId, deedURI).send({from: this.account, gas: this.gas }, (err, transaction) => {
                 if(!err) 
                     resolve(transaction)
                 else

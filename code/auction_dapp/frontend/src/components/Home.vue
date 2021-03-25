@@ -160,33 +160,27 @@ export default {
   },
 
   async mounted() {
-    this.$auctionRepoInstance.setAccount("");
-    const count = await this.$auctionRepoInstance.getCount();
+    this.$root.$auctionRepoInstance.setAccount("");
+    const count = await this.$root.$auctionRepoInstance.getCount();
     for (let i = 0; i < count; i++) {
-      let auction = await this.$auctionRepoInstance.findById(i);
+      let auction = await this.$root.$auctionRepoInstance.findById(i);
       // get metadata
-      const swarmResult = await this.$http.get(
-        `${this.$config.BZZ_ENDPOINT}/bzz-list:/${auction[3]}`
-      );
-      let imageUrl = "";
-      swarmResult.body.entries.map(entry => {
-        if ("contentType" in entry)
-          imageUrl = `${this.$config.BZZ_ENDPOINT}/bzz-raw:/${auction[3]}/${entry.path}`;
-      });
+      const imageUrl = `http://${this.$root.$config.BZZ_ENDPOINT}/files/${auction.metadata}`
+      console.log(`imageUrl: ${imageUrl}`)
       this.auctions.push({
         id: i,
         image: imageUrl,
-        title: auction[0],
-        expirationDate: moment(new Date(auction[1].toNumber() * 1000)).format(
+        title: auction.name,
+        expirationDate: moment(new Date(Number(auction.blockDeadline) * 1000)).format(
           "dddd, MMMM Do YYYY, h:mm:ss a"
         ),
-        startingPrice: web3.utils.fromWei(auction[2].toNumber(), "ether"),
-        metadata: auction[3],
-        deedId: auction[4].toNumber(),
-        deedRepositoryAddress: auction[5],
-        owner: auction[6],
-        active: auction[7],
-        finalized: auction[8]
+        startingPrice: this.$root.globalState.getWeb3().utils.fromWei(auction.startPrice, "ether"),
+        metadata: auction.metadata,
+        deedId: Number(auction.deedId),
+        deedRepositoryAddress: auction.deedRepositoryAddress,
+        owner: auction.owner,
+        active: auction.active,
+        finalized: auction.finalized
       });
     }
     this.loadingAuctions = false;

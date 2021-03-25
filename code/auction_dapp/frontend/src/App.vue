@@ -385,14 +385,15 @@ export default {
         async transferTo(){
             try {
                 this.transferingDeed = true
-                this.$deedRepoInstance.setAccount(this.getWeb3DefaultAccount)
-                const res = await this.$deedRepoInstance.transferTo( this.$config.AUCTIONREPOSITORY_ADDRESS, this.selectedDeed )
-                this.$deedRepoInstance.watchIfDeedTransfered((error, result) => {
+                this.$root.$deedRepoInstance.setAccount(this.getWeb3DefaultAccount)
+                const res = await this.$root.$deedRepoInstance.transferTo( this.$root.$config.AUCTIONREPOSITORY_ADDRESS, this.selectedDeed )
+                this.$root.$deedRepoInstance.watchIfDeedTransfered((error, result) => {
                     if(!error) this.transferDeedSuccess = true
                      this.transferingDeed = false
                 })
 
             } catch(e){
+                console.log('App:transferTo error: ', e)
                 alert('problem')
             }
 
@@ -405,19 +406,22 @@ export default {
                 this.loadingModal = true
 
                 // create from data and attach the auction property
-                let formData = new FormData()
-                Object.keys(this.auction).map((key) => {
-                    formData.append(key, this.auction[key])
-                })
-                const response = await this.$http.post(`${this.$config.BZZ_ENDPOINT}/bzz:/`, formData)
-                this.auction.metadata = response.body
+                let file = new FormData()
+                file.set('file', this.auction.fileInput)
+                const response = await this.$http.post(`http://${this.$root.$config.BZZ_ENDPOINT}/files`, file)
+                console.log('uploadAndCreateAuction.response: ', response.body.reference)
+                this.auction.metadata = response.body.reference
 
-                console.log(this.auction)
+                console.log('YYYYYYYYYY: ', this.auction)
 
                 // create the smart contract
-                this.$auctionRepoInstance.setAccount(this.getWeb3DefaultAccount)
-                const transaction = await this.$auctionRepoInstance.create(this.auction.deedId, this.auction.auctionTitle, this.auction.metadata, this.auction.startingPrice, this.auction.timeInBlocks)
-                this.$auctionRepoInstance.watchIfCreated((error, result) => {
+                console.log('uploadAndCreateAuction.setAccount')
+                this.$root.$auctionRepoInstance.setAccount(this.getWeb3DefaultAccount)
+                console.log('uploadAndCreateAuction.create')
+                const transaction = await this.$root.$auctionRepoInstance.create(this.auction.deedId, this.auction.auctionTitle, this.auction.metadata, this.auction.startingPrice, this.auction.timeInBlocks)
+                console.log('uploadAndCreateAuction.setListener')
+                this.$root.$auctionRepoInstance.watchIfCreated((error, result) => {
+                    console.log('uploadAndCreateAuction.setListener callback: ', error)
                     if(!error) {
                         this.loadingModal = false
                         this.dialog = false
@@ -440,10 +444,10 @@ export default {
                 this.creatingAsset = true
                 this.createAssetError = null
                 
-                this.$deedRepoInstance.setAccount(this.getWeb3DefaultAccount)
-                var trnasaction = await this.$deedRepoInstance.create(this.deed.deedId, this.deed.deedURI)
+                this.$root.$deedRepoInstance.setAccount(this.getWeb3DefaultAccount)
+                var transaction = await this.$root.$deedRepoInstance.create(this.deed.deedId, this.deed.deedURI)
 
-                this.$deedRepoInstance.watchIfCreated((error, result) => {
+                this.$root.$deedRepoInstance.watchIfCreated((error, result) => {
                     // might get called multiple times
                     if(this.createAssetSuccess) return
                     // set GUI
@@ -495,7 +499,9 @@ export default {
          */
         showAuction() {
             // get random deedid
-            this.deed.deedId = new web3.BigNumber(`${this.$root.$data.globalState.getRandomInt(123456789,999999999)}${this.$root.$data.globalState.getRandomInt(123456789,999999999)}`)
+            let bn = `${this.$root.$data.globalState.getRandomInt(123456789,999999999)}${this.$root.$data.globalState.getRandomInt(123456789,999999999)}`
+            let web3 = this.$root.$data.globalState.getWeb3()
+            this.deed.deedId = new web3.utils.BN(bn)
             this.dialog = true;
         },
 

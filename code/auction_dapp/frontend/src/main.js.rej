@@ -1,0 +1,49 @@
+--- code/auction_dapp/frontend/src/main.js
++++ code/auction_dapp/frontend/src/main.js
+@@ -77,9 +84,10 @@ Vue.mixin({
+         
+         this.$chatroomInstance.setWeb3(new Web3_1(Config.SHH_ENDPOINT))
+ 
++		detectEthereumProvider().then((provider) => {
+ 			// one instance of web3 available to all components
+-        if (typeof web3 !== 'undefined') {
+-            web3 = new Web3(web3.currentProvider)
++			let web3 = new Web3(provider)
++			store.setWeb3(web3)
+ 			this.$auctionRepoInstance.setWeb3(web3)
+ 			this.$deedRepoInstance.setWeb3(web3)
+ 
+@@ -88,19 +96,27 @@ Vue.mixin({
+ 				store.setNetworkId(netId)
+ 			})
+ 			// pull accounts every 2 seconds
+-            setInterval(() => {
++			setInterval(function tryGetAccounts () {
+ 				web3.eth.getAccounts((err, data) => {
+-                    if(data.length > 0) store.setWeb3DefaultAccount(data[0])
++					if(data.length > 0) {
++						console.log("Got default account: ", data[0])
++						store.setWeb3DefaultAccount(data[0])
++					}
++					else {
++						console.log(`Could not get accounts: err ${err}, data.length ${data.length}`)
++					}
+ 				})
+ 			}, 2000)
+-        }
++		})
++
+         // inject config to components
+         this.$config = Config
+-    }
+-})
+ 
++		console.log('CREATED')
++    }
++}
+ 
+-new Vue({
++window.MainApp = new Vue({
+     el: '#app',
+     data: {
+         globalState: store,

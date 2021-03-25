@@ -204,33 +204,33 @@
             async bid() {
                 this.bidModal = false
                 this.loadingModal = true
-                this.$auctionRepoInstance.setAccount(this.$root.$data.globalState.getWeb3DefaultAccount())
-                const result = await this.$auctionRepoInstance.bid(this.auction[0].id, this.bidPrice)
-                this.$auctionRepoInstance.watchIfBidSuccess((error, result) => {
+                this.$root.$auctionRepoInstance.setAccount(this.$root.$data.globalState.getWeb3DefaultAccount())
+                const result = await this.$root.$auctionRepoInstance.bid(this.auction[0].id, this.bidPrice)
+                this.$root.$auctionRepoInstance.watchIfBidSuccess((error, result) => {
                      this.getAuction(this.$route.params.id) 
                      this.loadingModal = false
                 })
             },
             async cancelAuction(auctionId) {
                 this.loadingModal = true
-                this.$auctionRepoInstance.setAccount(this.$root.$data.globalState.getWeb3DefaultAccount())
-                const result = await this.$auctionRepoInstance.cancel(auctionId)
-                this.$auctionRepoInstance.watchIfCanceled((error, result) => {
+                this.$root.$auctionRepoInstance.setAccount(this.$root.$data.globalState.getWeb3DefaultAccount())
+                const result = await this.$root.$auctionRepoInstance.cancel(auctionId)
+                this.$root.$auctionRepoInstance.watchIfCanceled((error, result) => {
                     this.loadingModal = false
                     this.getAuction(this.$route.params.id) 
                 })
             },
             async finalizeAuction(auctionId) {
                 this.loadingModal = true
-                this.$auctionRepoInstance.setAccount(this.$root.$data.globalState.getWeb3DefaultAccount())
-                const result = await this.$auctionRepoInstance.finalize(auctionId)
-                this.$auctionRepoInstance.watchIfFinalized((error, result) => {
+                this.$root.$auctionRepoInstance.setAccount(this.$root.$data.globalState.getWeb3DefaultAccount())
+                const result = await this.$root.$auctionRepoInstance.finalize(auctionId)
+                this.$root.$auctionRepoInstance.watchIfFinalized((error, result) => {
                     this.loadingModal = false
                     this.getAuction(this.$route.params.id) 
                 })
             },
             async sendMessage() {
-                const result = await this.$chatroomInstance.sendMessageEvent(this.identity, this.roomHex, this.myMessage)
+                const result = await this.$root.$chatroomInstance.sendMessageEvent(this.identity, this.roomHex, this.myMessage)
                 this.myMessage = ''
 
             },
@@ -243,11 +243,10 @@
                     }
                     this.joined = true
                     this.loading = true
-                    //this.$root.$data.globalState.joinChatRoom('test', this.identity) //0xffaadd11
                     
-                    this.$chatroomInstance.sendJoinEvent(this.identity, this.roomHex, '')
-                    this.$chatroomInstance.subscribeToTopic(this.roomHex, (data) => {
-                        const payload = JSON.parse(this.$chatroomInstance.getWeb3().utils.hexToString(data.payload))
+                    this.$root.$chatroomInstance.subscribeToTopic(this.roomHex, async (data) => {
+                        const text = await data.data.text()
+                        const payload = JSON.parse(text)
                         // check if already in users..(handle delay)
                         if (payload.type == 'join') {
                             this.users.push(payload)
@@ -260,6 +259,7 @@
                             })
                         }
                     })
+                    this.$root.$chatroomInstance.sendJoinEvent(this.identity, this.roomHex, '')
                 } catch (e) {
                     this.error = e.message
 
@@ -269,25 +269,19 @@
 
             },
             async getAuction(auctionId) {
-                    this.$auctionRepoInstance.setAccount('')
-                    let bidCount = await this.$auctionRepoInstance.getBidCount(auctionId)
+                    this.$root.$auctionRepoInstance.setAccount('')
+                    let bidCount = await this.$root.$auctionRepoInstance.getBidCount(auctionId)
                     let lastBidAmount = 0, lastBidAccount = 'N/A'
                     if(bidCount > 0) {
-                        const res = await this.$auctionRepoInstance.getCurrentBid(auctionId)
-                        lastBidAmount = this.$auctionRepoInstance.getWeb3().fromWei(res[0].toNumber(), 'ether')
+                        const res = await this.$root.$auctionRepoInstance.getCurrentBid(auctionId)
+                        lastBidAmount = this.$root.$auctionRepoInstance.getWeb3().utils.fromWei(res[0], 'ether')
                         lastBidAccount = res[1]
                     }
-                    let auction = await this.$auctionRepoInstance.findById(auctionId)
+                    let auction = await this.$root.$auctionRepoInstance.findById(auctionId)
                     // get metadata
-                    const swarmResult = await this.$http.get(`${this.$config.BZZ_ENDPOINT}/bzz-list:/${auction[3]}`)
-                    let imageUrl = ''
-                    swarmResult.body.entries.map((entry) => {
-                        if('contentType' in entry) imageUrl = `${this.$config.BZZ_ENDPOINT}/bzz-raw:/${auction[3]}/${entry.path}`
-                    })
-                    
-                    let expires = new Date(auction[1].toNumber() * 1000 ), now = new Date()
+                    const imageUrl = `http://${this.$root.$config.BZZ_ENDPOINT}/files/${auction.metadata}`
+                    let expires = new Date(Number(auction.blockDeadline) * 1000 ), now = new Date()
                     const expirationInHuman = moment.duration(moment(now).diff(expires)).humanize()
-
             
                     let compactAuction = [{
                         id: auctionId,
@@ -295,16 +289,16 @@
                         lastBidAmount: lastBidAmount,
                         lastBidAccount: lastBidAccount,
                         image: imageUrl,
-                        title: auction[0],
+                        title: auction.name,
                         timeLeft: expirationInHuman,
-                        expirationDate: moment(new Date(auction[1].toNumber() * 1000)).format('dddd, MMMM Do YYYY, h:mm:ss a'),
-                        startingPrice: this.$auctionRepoInstance.getWeb3().fromWei(auction[2].toNumber(), 'ether'),
-                        metadata: auction[3],
-                        deedId: auction[4].toNumber(),
-                        deedRepositoryAddress: auction[5],
-                        owner: auction[6],
-                        active: auction[7],
-                        finalized: auction[8]
+                        expirationDate: moment(new Date(Number(auction.blockDeadline) * 1000)).format('dddd, MMMM Do YYYY, h:mm:ss a'),
+                        startingPrice: this.$root.$auctionRepoInstance.getWeb3().utils.fromWei(auction.startPrice, 'ether'),
+                        metadata: auction.metadata,
+                        deedId: Number(auction.deedId),
+                        deedRepositoryAddress: auction.deedRepositoryAddress,
+                        owner: auction.owner,
+                        active: auction.active,
+                        finalized: auction.finalized
                     }]
                     this.$set(this, 'auction', compactAuction)
                     this.loadingModal = false
